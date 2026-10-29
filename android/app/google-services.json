@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "631251832827",
+    "project_id": "espressosync-15f61",
+    "storage_bucket": "espressosync-15f61.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:631251832827:android:d1f0537393181a80e1455e",
+        "android_client_info": {
+          "package_name": "com.example.espressosync"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB47ka09ECOz2kwwnNYQEDH5UKD1rdwfyE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
