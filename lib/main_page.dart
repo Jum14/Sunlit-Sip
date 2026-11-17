@@ -4,7 +4,7 @@ import 'login_page.dart';
 import 'home_page.dart';
 
 class MainPage extends StatelessWidget {
-  const MainPage({Key? key}) : super(key: key);
+  const MainPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +13,8 @@ class MainPage extends StatelessWidget {
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            return const HomePage();
+            final userEmail = snapshot.data?.email ?? '';
+            return HomePage(userEmail: userEmail);
           } else {
             return const LoginPage();
           }

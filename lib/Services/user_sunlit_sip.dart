@@ -1,44 +1,108 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SunlitSipItem {
-  final dynamic id;
+  final String id;
   final String title;
   final String description;
   final String price;
   final String points;
+  final String category; // 'Drink' or 'Food'
 
   SunlitSipItem({
-    this.id,
+    required this.id,
     required this.title,
     required this.description,
     required this.price,
     required this.points,
+    this.category = 'Drink',
   });
 
-  factory SunlitSipItem.fromJson(Map<String, dynamic> json) {
+  static String _inferCategory(String title, dynamic rawCategory) {
+    if (rawCategory is String && rawCategory.trim().isNotEmpty) {
+      return rawCategory.trim();
+    }
+    final lower = title.toLowerCase();
+    const foodKeywords = [
+      'cake',
+      'cupcake',
+      'cheesecake',
+      'croissant',
+      'ensaymada',
+      'cookie',
+      'brownie',
+      'brioche',
+      'roll',
+      'pastry',
+      'muffin',
+      'sandwich',
+      'bread',
+    ];
+    for (final word in foodKeywords) {
+      if (lower.contains(word)) return 'Food';
+    }
+    return 'Drink';
+  }
+
+  factory SunlitSipItem.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final title = data['title'] as String? ?? '';
     return SunlitSipItem(
-      id: json['id'],
-      title: json['title'] ?? json['name'] ?? 'Coffee Item',
-      description: json['description'] ?? json['category'] ?? 'Espresso Blend',
-      price: json['price']?.toString() ?? '₱150.00',
-      points: json['points']?.toString() ?? '+15 Pts',
+      id: doc.id,
+      title: title,
+      description: data['description'] as String? ?? '',
+      price: data['price'] as String? ?? '₱0.00',
+      points: data['points'] as String? ?? '+0 Pts',
+      category: _inferCategory(title, data['category']),
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'description': description,
+      'price': price,
+      'points': points,
+      'category': category,
+    };
   }
 }
 
 class SunlitSipApiService {
-  static const String apiUrl =
-      'https://raw.githubusercontent.com/Jum14/SunlitSip-API/refs/heads/main/sunlit_sip_menu.json';
+  static final CollectionReference _menuCollection =
+      FirebaseFirestore.instance.collection('menu_items');
 
-  static Future<List<SunlitSipItem>> fetchMenuItems() async {
-    final response = await http.get(Uri.parse(apiUrl));
+  static Stream<List<SunlitSipItem>> getMenuItemsStream() {
+    return _menuCollection.snapshots().map((snapshot) {
+      final docs = snapshot.docs.toList();
+      docs.sort((a, b) {
+        final aTs =
+            (a.data() as Map<String, dynamic>?)?['createdAt'] as Timestamp?;
+        final bTs =
+            (b.data() as Map<String, dynamic>?)?['createdAt'] as Timestamp?;
+        if (aTs == null && bTs == null) return 0;
+        if (aTs == null) return 1;
+        if (bTs == null) return -1;
+        return bTs.compareTo(aTs);
+      });
+      return docs.map((doc) => SunlitSipItem.fromFirestore(doc)).toList();
+    });
+  }
 
-    if (response.statusCode == 200) {
-      final List<dynamic> body = jsonDecode(response.body);
-      return body.map((item) => SunlitSipItem.fromJson(item)).toList();
-    } else {
-      throw Exception('Failed to load menu data (Status Code: ${response.statusCode})');
-    }
+  static Future<void> addMenuItem(SunlitSipItem item) async {
+    await _menuCollection.add({
+      ...item.toMap(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  static Future<void> updateMenuItem(String id, SunlitSipItem item) async {
+    await _menuCollection.doc(id).update({
+      ...item.toMap(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  static Future<void> deleteMenuItem(String id) async {
+    await _menuCollection.doc(id).delete();
   }
 }
